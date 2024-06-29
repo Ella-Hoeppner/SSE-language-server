@@ -1,0 +1,8 @@
+[package]
+name = "sse_lsp"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.38.0", features = ["rt-multi-thread", "io-std", "macros", "io-util"] }
+tower-lsp = "0.20.0"
