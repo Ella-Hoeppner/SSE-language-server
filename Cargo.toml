@@ -6,3 +6,7 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1.38.0", features = ["rt-multi-thread", "io-std", "macros", "io-util"] }
 tower-lsp = "0.20.0"
+
+[[bin]]
+name = "sse_lsp"
+path = "src/main.rs"

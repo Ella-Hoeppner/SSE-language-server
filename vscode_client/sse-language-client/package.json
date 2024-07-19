@@ -1,0 +1,41 @@
+{
+  "name": "sse-language-client",
+  "displayName": "SSE Language Client",
+  "description": "Language support for the SSE format",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "sse",
+        "aliases": [
+          "SSE",
+          "sse"
+        ],
+        "extensions": [
+          ".sse"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver-protocol": "^3.17.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.11",
+    "@types/vscode": "^1.91.0",
+    "typescript": "^5.5.3"
+  }
+}
