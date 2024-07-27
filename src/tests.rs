@@ -7,7 +7,7 @@ async fn start_server_terminal() {
   let stdin = tokio::io::stdin();
   let stdout = tokio::io::stdout();
 
-  let (service, socket) = LspService::new(|client| Backend { client });
+  let (service, socket) = LspService::new(Backend::new);
 
   Server::new(stdin, stdout, socket).serve(service).await;
 }
@@ -54,7 +54,7 @@ async fn start_server_with_messages(
     }
   });
 
-  let (service, socket) = LspService::new(|client| Backend { client });
+  let (service, socket) = LspService::new(Backend::new);
 
   Server::new(stdin_reader, stdout_writer, socket)
     .serve(service)
