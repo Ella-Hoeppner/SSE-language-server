@@ -3,8 +3,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 const path = require("path");
+const vscode = require("vscode");
 const node_1 = require("vscode-languageclient/node");
 let client;
+function selectTextAfterCursor() {
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+        const selection = editor.selection;
+        const newSelection = new vscode.Selection(selection.start, selection.end.with(selection.end.line, selection.end.character + 1));
+        editor.selection = newSelection;
+    }
+}
 function activate(context) {
     const serverPath = path.join(__dirname, '..', '..', '..', 'target', 'debug', 'sse_lsp');
     const runOptions = { command: serverPath, transport: node_1.TransportKind.stdio };
@@ -16,6 +25,8 @@ function activate(context) {
     const clientOptions = {
         documentSelector: [{ scheme: 'file', language: 'sse' }],
     };
+    let disposable = vscode.commands.registerCommand('extension.selectTextAfterCursor', selectTextAfterCursor);
+    context.subscriptions.push(disposable);
     client = new node_1.LanguageClient('sseLanguageServer', 'SSE Language Server', serverOptions, clientOptions);
     client.start();
 }

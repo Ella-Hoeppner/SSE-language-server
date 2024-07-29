@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { workspace, ExtensionContext } from 'vscode';
+import * as vscode from 'vscode';
 import {
   LanguageClient,
   LanguageClientOptions,
@@ -10,7 +10,16 @@ import {
 
 let client: LanguageClient;
 
-export function activate(context: ExtensionContext) {
+function selectTextAfterCursor() {
+  const editor = vscode.window.activeTextEditor;
+  if (editor) {
+      const selection = editor.selection;
+      const newSelection = new vscode.Selection(selection.start, selection.end.with(selection.end.line, selection.end.character + 1));
+      editor.selection = newSelection;
+  }
+}
+
+export function activate(context: vscode.ExtensionContext) {
   const serverPath = path.join(__dirname, '..', '..', '..', 'target', 'debug', 'sse_lsp');
 
   const runOptions: Executable = { command: serverPath, transport: TransportKind.stdio };
@@ -24,6 +33,9 @@ export function activate(context: ExtensionContext) {
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'sse' }],
   };
+
+  let disposable = vscode.commands.registerCommand('extension.selectTextAfterCursor', selectTextAfterCursor);
+  context.subscriptions.push(disposable);
 
   client = new LanguageClient(
     'sseLanguageServer',

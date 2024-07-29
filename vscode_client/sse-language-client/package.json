@@ -11,6 +11,19 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "extension.selectTextAfterCursor",
+        "title": "Select Text After Cursor"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "extension.selectTextAfterCursor",
+        "key": "ctrl+w",
+        "when": "editorTextFocus"
+      }
+    ],
     "languages": [
       {
         "id": "sse",

@@ -1,5 +1,9 @@
 use std::{collections::HashMap, sync::RwLock};
 
+use sse::{
+  str_tagged::{StringTaggedDocument, StringTaggedSyntaxGraph},
+  Parser,
+};
 use tower_lsp::{
   jsonrpc::Result,
   lsp_types::{
@@ -25,6 +29,20 @@ impl Backend {
       documents: Default::default(),
     }
   }
+}
+
+fn sexp_graph<'g>() -> StringTaggedSyntaxGraph<'g> {
+  StringTaggedSyntaxGraph::contextless_from_descriptions(
+    vec![
+      ' '.to_string(),
+      '\n'.to_string(),
+      '\t'.to_string(),
+      '\r'.to_string(),
+    ],
+    Some('\\'.to_string()),
+    vec![("", "(", ")")],
+    vec![],
+  )
 }
 
 #[tower_lsp::async_trait]
@@ -88,11 +106,20 @@ impl LanguageServer for Backend {
         let uri = pos_params.text_document.uri.to_string();
         let line = pos_params.position.line;
         let char = pos_params.position.character;
-        Ok(docs.get(&uri).map(|doc| Hover {
-          contents: HoverContents::Scalar(MarkedString::String(
-            format!("{line}:{char}   ") + doc,
-          )),
-          range: None,
+        Ok(docs.get(&uri).map(|text| {
+          let document: StringTaggedDocument =
+            Parser::new(sexp_graph(), text).try_into().unwrap();
+          let hovered_path =
+            document.innermost_enclosing_path(&(char as usize..char as usize));
+          let hovered_subtree_text =
+            document.get_subtree_text(&hovered_path).unwrap();
+          Hover {
+            contents: HoverContents::Scalar(MarkedString::String(format!(
+              "{}",
+              hovered_subtree_text
+            ))),
+            range: None,
+          }
         }))
       }
       Err(e) => panic!("hover failed to read document: {e:?}"),
