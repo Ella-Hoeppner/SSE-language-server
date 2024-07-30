@@ -10,12 +10,33 @@ import {
 
 let client: LanguageClient;
 
-function selectTextAfterCursor() {
+async function selectTextAfterCursor() {
   const editor = vscode.window.activeTextEditor;
   if (editor) {
-      const selection = editor.selection;
-      const newSelection = new vscode.Selection(selection.start, selection.end.with(selection.end.line, selection.end.character + 1));
-      editor.selection = newSelection;
+    const position = editor.selection.active;
+    const params = {
+      textDocument: { uri: editor.document.uri.toString() },
+      position: { line: position.line, character: position.character }
+    };
+
+    try {
+      const result = await vscode.commands.executeCommand(
+        'expandSelection',
+        params
+      ) as [number, number, number, number] | undefined;
+
+      if (result !== undefined) {
+        console.error('result was defined');
+        editor.selection = new vscode.Selection(
+          new vscode.Position(result[0], result[1]),
+          new vscode.Position(result[2], result[3]),
+        );
+      } else {
+        console.error('result was undefined');
+      }
+    } catch (error) {
+      console.error('Error calling custom LSP command:', error);
+    }
   }
 }
 

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+serde_json = "1.0.121"
 sse = { git = "https://github.com/Ella-Hoeppner/SSE.git" }
 # sse = { path = "../sse" }
 tokio = { version = "1.38.0", features = ["rt-multi-thread", "io-std", "macros", "io-util"] }

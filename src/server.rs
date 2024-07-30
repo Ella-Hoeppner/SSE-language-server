@@ -1,16 +1,18 @@
 use std::{collections::HashMap, sync::RwLock};
 
+use serde_json::Value;
 use sse::{
   str_tagged::{StringTaggedDocument, StringTaggedSyntaxGraph},
   Parser,
 };
 use tower_lsp::{
-  jsonrpc::Result,
+  jsonrpc::{Error, Result},
   lsp_types::{
     DidChangeTextDocumentParams, DidCloseTextDocumentParams,
-    DidOpenTextDocumentParams, Hover, HoverContents, HoverParams,
-    HoverProviderCapability, InitializeParams, InitializeResult,
-    InitializedParams, MarkedString, MessageType, ServerCapabilities,
+    DidOpenTextDocumentParams, ExecuteCommandOptions, ExecuteCommandParams,
+    Hover, HoverContents, HoverParams, HoverProviderCapability,
+    InitializeParams, InitializeResult, InitializedParams, MarkedString,
+    MessageType, Position, ServerCapabilities, TextDocumentPositionParams,
     TextDocumentSyncCapability, TextDocumentSyncKind,
   },
   Client, LanguageServer,
@@ -54,6 +56,10 @@ impl LanguageServer for Backend {
         text_document_sync: Some(TextDocumentSyncCapability::Kind(
           TextDocumentSyncKind::FULL,
         )),
+        execute_command_provider: Some(ExecuteCommandOptions {
+          commands: vec!["expandSelection".to_string()],
+          work_done_progress_options: Default::default(),
+        }),
         ..Default::default()
       },
       ..Default::default()
@@ -69,6 +75,36 @@ impl LanguageServer for Backend {
 
   async fn shutdown(&self) -> Result<()> {
     Ok(())
+  }
+
+  async fn execute_command(
+    &self,
+    params: ExecuteCommandParams,
+  ) -> Result<Option<Value>> {
+    match params.command.as_str() {
+      "expandSelection" => {
+        if params.arguments.len() == 1 {
+          if let Some(params) = serde_json::from_value::<
+            TextDocumentPositionParams,
+          >(params.arguments[0].clone())
+          .ok()
+          {
+            Ok(Some(serde_json::to_value([0, 3, 0, 9]).unwrap()))
+          } else {
+            Err(Error::invalid_params(format!(
+              "Invalid parameters: {}",
+              params.arguments[0]
+            )))
+          }
+        } else {
+          Err(Error::invalid_params(format!(
+            "Invalid number of arguments {}",
+            params.arguments.len()
+          )))
+        }
+      }
+      _ => Err(Error::method_not_found()),
+    }
   }
 
   async fn did_open(&self, params: DidOpenTextDocumentParams) {
@@ -104,19 +140,19 @@ impl LanguageServer for Backend {
       Ok(docs) => {
         let pos_params = params.text_document_position_params;
         let uri = pos_params.text_document.uri.to_string();
-        let line = pos_params.position.line;
+        //let line = pos_params.position.line;
         let char = pos_params.position.character;
         Ok(docs.get(&uri).map(|text| {
           let document: StringTaggedDocument =
             Parser::new(sexp_graph(), text).try_into().unwrap();
           let hovered_path =
             document.innermost_enclosing_path(&(char as usize..char as usize));
-          let hovered_subtree_text =
-            document.get_subtree_text(&hovered_path).unwrap();
+          //let hovered_subtree_text =
+          //  document.get_subtree_text(&hovered_path).unwrap();
           Hover {
             contents: HoverContents::Scalar(MarkedString::String(format!(
-              "{}",
-              hovered_subtree_text
+              "{:?}",
+              hovered_path
             ))),
             range: None,
           }
