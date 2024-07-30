@@ -1,2 +1,4 @@
 /target
 .vscode/
+/vscode_client/sse-language-client/out
+/vscode_client/sse-language-client/node_modules
