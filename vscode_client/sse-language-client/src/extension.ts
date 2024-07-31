@@ -13,16 +13,26 @@ let client: LanguageClient;
 async function selectTextAfterCursor() {
   const editor = vscode.window.activeTextEditor;
   if (editor) {
-    const position = editor.selection.active;
-    const params = {
-      textDocument: { uri: editor.document.uri.toString() },
-      position: { line: position.line, character: position.character }
-    };
+    vscode.Selection
+    const selection = editor.selection;
 
     try {
       const result = await vscode.commands.executeCommand(
         'expandSelection',
-        params
+        [{
+          textDocument: { uri: editor.document.uri.toString() },
+          position: {
+            line: selection.start.line,
+            character: selection.start.character
+          },
+        },
+        {
+          textDocument: { uri: editor.document.uri.toString() },
+          position: {
+            line: selection.end.line,
+            character: selection.end.character
+          },
+        }]
       ) as [number, number, number, number] | undefined;
 
       if (result !== undefined) {
