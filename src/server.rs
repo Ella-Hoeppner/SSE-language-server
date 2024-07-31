@@ -2,6 +2,7 @@ use std::{collections::HashMap, sync::RwLock};
 
 use serde_json::Value;
 use sse::{
+  document::Document,
   str_tagged::{StringTaggedDocument, StringTaggedSyntaxGraph},
   Parser,
 };
@@ -140,15 +141,15 @@ impl LanguageServer for Backend {
       Ok(docs) => {
         let pos_params = params.text_document_position_params;
         let uri = pos_params.text_document.uri.to_string();
-        //let line = pos_params.position.line;
+        let line = pos_params.position.line;
         let char = pos_params.position.character;
         Ok(docs.get(&uri).map(|text| {
           let document: StringTaggedDocument =
             Parser::new(sexp_graph(), text).try_into().unwrap();
-          let hovered_path =
-            document.innermost_enclosing_path(&(char as usize..char as usize));
-          //let hovered_subtree_text =
-          //  document.get_subtree_text(&hovered_path).unwrap();
+          let index = document
+            .row_and_col_to_index(line as usize, char as usize)
+            .unwrap();
+          let hovered_path = document.innermost_enclosing_path(&(index..index));
           Hover {
             contents: HoverContents::Scalar(MarkedString::String(format!(
               "{:?}",
