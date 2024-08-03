@@ -10,12 +10,10 @@ import {
 
 let client: LanguageClient;
 
-async function selectTextAfterCursor() {
+async function expandSelection() {
   const editor = vscode.window.activeTextEditor;
   if (editor) {
-    vscode.Selection
     const selection = editor.selection;
-
     try {
       const result = await vscode.commands.executeCommand(
         'expandSelection',
@@ -36,10 +34,46 @@ async function selectTextAfterCursor() {
       ) as [number, number, number, number] | undefined;
 
       if (result !== undefined) {
-        console.error('result was defined');
         editor.selection = new vscode.Selection(
           new vscode.Position(result[0], result[1]),
           new vscode.Position(result[2], result[3]),
+        );
+      } else {
+        console.error('result was undefined');
+      }
+    } catch (error) {
+      console.error('Error calling custom LSP command:', error);
+    }
+  }
+}
+
+async function moveCursorLeft() {
+  const editor = vscode.window.activeTextEditor;
+  if (editor) {
+    const selection = editor.selection;
+    try {
+      const result = await vscode.commands.executeCommand(
+        'moveCursorLeft',
+        [{
+          textDocument: { uri: editor.document.uri.toString() },
+          position: {
+            line: selection.start.line,
+            character: selection.start.character
+          },
+        },
+        {
+          textDocument: { uri: editor.document.uri.toString() },
+          position: {
+            line: selection.end.line,
+            character: selection.end.character
+          },
+        }]
+      ) as [number, number] | undefined;
+
+      if (result !== undefined) {
+        editor.selection = new vscode.Selection(
+          new vscode.Position(result[0], result[1]),
+          new vscode.Position(result[0], result[1]),
         );
       } else {
         console.error('result was undefined');
@@ -65,8 +99,13 @@ export function activate(context: vscode.ExtensionContext) {
     documentSelector: [{ scheme: 'file', language: 'sse' }],
   };
 
-  let disposable = vscode.commands.registerCommand('extension.selectTextAfterCursor', selectTextAfterCursor);
-  context.subscriptions.push(disposable);
+  for (let [commandName, commandHandler] of
+    [['extension.moveCursorLeft', moveCursorLeft],['extension.expandSelection', expandSelection],
+    ] as const) {
+    context.subscriptions.push(
+      vscode.commands.registerCommand(commandName, commandHandler)
+    );
+  }
 
   client = new LanguageClient(
     'sseLanguageServer',

@@ -13,14 +13,23 @@
   "contributes": {
     "commands": [
       {
-        "command": "extension.selectTextAfterCursor",
-        "title": "Select Text After Cursor"
+        "command": "extension.expandSelection",
+        "title": "SSE: Expand Selection"
+      },
+      {
+        "command": "extension.moveCursorLeft",
+        "title": "SSE: Move Cursor Left of the Current Form"
       }
     ],
     "keybindings": [
       {
-        "command": "extension.selectTextAfterCursor",
-        "key": "ctrl+w",
+        "command": "extension.expandSelection",
+        "key": "ctrl+e",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.moveCursorLeft",
+        "key": "ctrl+a",
         "when": "editorTextFocus"
       }
     ],

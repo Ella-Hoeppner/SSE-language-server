@@ -57,7 +57,10 @@ impl LanguageServer for Backend {
           TextDocumentSyncKind::FULL,
         )),
         execute_command_provider: Some(ExecuteCommandOptions {
-          commands: vec!["expandSelection".to_string()],
+          commands: vec![
+            "expandSelection".to_string(),
+            "moveCursorLeft".to_string(),
+          ],
           work_done_progress_options: Default::default(),
         }),
         ..Default::default()
@@ -111,38 +114,6 @@ impl LanguageServer for Backend {
                     selection_end_params.position.character as usize,
                   )
                   .expect("invalid row and col");
-                /*println!(
-                  "start/end: {}/{}",
-                  document_start_index, document_end_index
-                );*/
-                if false && document_start_index != document_end_index {
-                  panic!(
-                    "{:?}",
-                    (
-                      document_start_index,
-                      document_end_index,
-                      document
-                        .expand_selection(
-                          &(document_start_index..document_end_index),
-                        )
-                        .map(|new_selection| {
-                          let (start_row, start_col) = document
-                            .index_to_row_and_col(new_selection.start)
-                            .unwrap();
-                          let (end_row, end_col) = document
-                            .index_to_row_and_col(new_selection.end)
-                            .unwrap();
-                          serde_json::to_value([
-                            start_row,
-                            start_col.unwrap_or(0),
-                            end_row,
-                            end_col.unwrap_or(0),
-                          ])
-                          .unwrap()
-                        })
-                    )
-                  )
-                }
                 Ok(
                   document
                     .expand_selection(
@@ -156,16 +127,72 @@ impl LanguageServer for Backend {
                         .index_to_row_and_col(new_selection.end)
                         .unwrap();
                       serde_json::to_value([
-                        start_row,
-                        start_col.unwrap_or(0),
-                        end_row,
-                        end_col.unwrap_or(0),
+                        start_row, start_col, end_row, end_col,
                       ])
                       .unwrap()
                     }),
                 )
               }
-              Err(e) => panic!("hover failed to read document: {e:?}"),
+              Err(e) => {
+                panic!("expandSelection failed to read document: {e:?}")
+              }
+            }
+          } else {
+            Err(Error::invalid_params(format!(
+              "Invalid parameters: {}",
+              params.arguments[0]
+            )))
+          }
+        } else {
+          Err(Error::invalid_params(format!(
+            "Invalid number of arguments {}",
+            params.arguments.len()
+          )))
+        }
+      }
+      "moveCursorLeft" => {
+        if params.arguments.len() == 1 {
+          if let Some((selection_start_params, selection_end_params)) =
+            serde_json::from_value::<(
+              TextDocumentPositionParams,
+              TextDocumentPositionParams,
+            )>(params.arguments[0].clone())
+            .ok()
+          {
+            match self.documents.read() {
+              Ok(docs) => {
+                let uri = selection_start_params.text_document.uri.to_string();
+                let text = docs
+                  .get(&uri)
+                  .expect(&format!("didn't have data for document {}", uri));
+                let document: StringTaggedDocument =
+                  Parser::new(sexp_graph(), text).try_into().unwrap();
+                let document_start_index = document
+                  .row_and_col_to_index(
+                    selection_start_params.position.line as usize,
+                    selection_start_params.position.character as usize,
+                  )
+                  .expect("invalid row and col");
+                let document_end_index = document
+                  .row_and_col_to_index(
+                    selection_end_params.position.line as usize,
+                    selection_end_params.position.character as usize,
+                  )
+                  .expect("invalid row and col");
+                let (start_row, start_col) = document
+                  .index_to_row_and_col(
+                    document
+                      .get_subtree(&document.innermost_enclosing_path(
+                        &(document_start_index..document_end_index),
+                      ))
+                      .unwrap()
+                      .range()
+                      .start,
+                  )
+                  .unwrap();
+                Ok(Some(serde_json::to_value([start_row, start_col]).unwrap()))
+              }
+              Err(e) => panic!("moveCursorLeft failed to read document: {e:?}"),
             }
           } else {
             Err(Error::invalid_params(format!(
