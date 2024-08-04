@@ -10,10 +10,9 @@ use tower_lsp::{
   lsp_types::{
     DidChangeTextDocumentParams, DidCloseTextDocumentParams,
     DidOpenTextDocumentParams, ExecuteCommandOptions, ExecuteCommandParams,
-    Hover, HoverContents, HoverParams, HoverProviderCapability,
-    InitializeParams, InitializeResult, InitializedParams, MarkedString,
-    MessageType, ServerCapabilities, TextDocumentPositionParams,
-    TextDocumentSyncCapability, TextDocumentSyncKind,
+    InitializeParams, InitializeResult, InitializedParams, MessageType,
+    ServerCapabilities, TextDocumentPositionParams, TextDocumentSyncCapability,
+    TextDocumentSyncKind,
   },
   Client, LanguageServer,
 };
@@ -109,14 +108,13 @@ impl LanguageServer for Backend {
   async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
     Ok(InitializeResult {
       capabilities: ServerCapabilities {
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
         text_document_sync: Some(TextDocumentSyncCapability::Kind(
           TextDocumentSyncKind::FULL,
         )),
         execute_command_provider: Some(ExecuteCommandOptions {
           commands: vec![
             "expandSelection".to_string(),
-            "moveCursorLeft".to_string(),
+            "moveCursorToStart".to_string(),
           ],
           work_done_progress_options: Default::default(),
         }),
@@ -158,19 +156,13 @@ impl LanguageServer for Backend {
           ))
         },
       ),
-      "moveCursorLeft" => self.selection_command(
+      "moveCursorToStart" => self.selection_command(
         params,
-        "moveCursorLeft",
+        "moveCursorToStart",
         |document, start_index, end_index| {
           let (start_row, start_col) = document
             .index_to_row_and_col(
-              document
-                .get_subtree(
-                  &document.innermost_enclosing_path(&(start_index..end_index)),
-                )
-                .unwrap()
-                .range()
-                .start,
+              document.move_cursor_to_start(&(start_index..end_index)),
             )
             .unwrap();
           Ok(Some(serde_json::to_value([start_row, start_col]).unwrap()))
@@ -206,32 +198,5 @@ impl LanguageServer for Backend {
       Ok(mut docs) => docs.remove(&uri),
       Err(e) => panic!("did_close failed: {e:?}"),
     };
-  }
-
-  async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-    match self.documents.read() {
-      Ok(docs) => {
-        let pos_params = params.text_document_position_params;
-        let uri = pos_params.text_document.uri.to_string();
-        let line = pos_params.position.line;
-        let char = pos_params.position.character;
-        Ok(docs.get(&uri).map(|text| {
-          let document: StringTaggedDocument =
-            Parser::new(sexp_graph(), text).try_into().unwrap();
-          let index = document
-            .row_and_col_to_index(line as usize, char as usize)
-            .unwrap();
-          let hovered_path = document.innermost_enclosing_path(&(index..index));
-          Hover {
-            contents: HoverContents::Scalar(MarkedString::String(format!(
-              "{:?}",
-              hovered_path
-            ))),
-            range: None,
-          }
-        }))
-      }
-      Err(e) => panic!("hover failed to read document: {e:?}"),
-    }
   }
 }

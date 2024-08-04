@@ -50,12 +50,12 @@ async function expandSelection() {
   }
 }
 
-async function moveCursorLeft() {
+async function moveCursorToStart() {
   const editor = vscode.window.activeTextEditor;
   if (editor) {
     try {
       const result = await vscode.commands.executeCommand(
-        'moveCursorLeft',
+        'moveCursorToStart',
         selectionPositions(editor)
       ) as [number, number] | undefined;
       if (result !== undefined) {
@@ -88,7 +88,7 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   for (let [commandName, commandHandler] of
-    [['extension.moveCursorLeft', moveCursorLeft],['extension.expandSelection', expandSelection],
+    [['extension.moveCursorToStart', moveCursorToStart],['extension.expandSelection', expandSelection],
     ] as const) {
     context.subscriptions.push(
       vscode.commands.registerCommand(commandName, commandHandler)

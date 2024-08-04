@@ -2,8 +2,6 @@ WIP Language server for the SSE text format
 
 # to do
 * move cursor to the beginning of a form with ctrl-a
-  * when already at the start of a form, move to the start of the preceding sibling
-  * when already at the start of a form and there are no preceeding siblings, move cursor to the start of the parent
   * when in between two forms (not touching either, but in whitespace between), move to the start of the first rather than the start of the parent
     * the problem is that `innermost_enclosing_path` identifies the parent in these cases
       * should `innermost_enclosing_path` consider the whitespace after a form as part of what that form contains? or have a different function for that?

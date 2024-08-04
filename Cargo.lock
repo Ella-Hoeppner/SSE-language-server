@@ -439,7 +439,7 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 [[package]]
 name = "sse"
 version = "0.0.0"
-source = "git+https://github.com/Ella-Hoeppner/SSE.git#611d2f730647082c187639ae38a9d2683c8640d0"
+source = "git+https://github.com/Ella-Hoeppner/SSE.git#e04c58d11818e1348863b6154d2e988fa25500a0"
 dependencies = [
  "unicode-segmentation",
 ]

@@ -17,7 +17,7 @@
         "title": "SSE: Expand Selection"
       },
       {
-        "command": "extension.moveCursorLeft",
+        "command": "extension.moveCursorToStart",
         "title": "SSE: Move Cursor Left of the Current Form"
       }
     ],
@@ -28,7 +28,7 @@
         "when": "editorTextFocus"
       },
       {
-        "command": "extension.moveCursorLeft",
+        "command": "extension.moveCursorToStart",
         "key": "ctrl+a",
         "when": "editorTextFocus"
       }
