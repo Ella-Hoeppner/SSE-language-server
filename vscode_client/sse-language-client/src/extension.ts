@@ -10,29 +10,32 @@ import {
 
 let client: LanguageClient;
 
+function selectionPositions(editor: vscode.TextEditor) {
+  const selection = editor.selection;
+  return [{
+    textDocument: { uri: editor.document.uri.toString() },
+    position: {
+      line: selection.start.line,
+      character: selection.start.character
+    },
+  },
+  {
+    textDocument: { uri: editor.document.uri.toString() },
+    position: {
+      line: selection.end.line,
+      character: selection.end.character
+    },
+  }];
+}
+
 async function expandSelection() {
   const editor = vscode.window.activeTextEditor;
   if (editor) {
-    const selection = editor.selection;
     try {
       const result = await vscode.commands.executeCommand(
         'expandSelection',
-        [{
-          textDocument: { uri: editor.document.uri.toString() },
-          position: {
-            line: selection.start.line,
-            character: selection.start.character
-          },
-        },
-        {
-          textDocument: { uri: editor.document.uri.toString() },
-          position: {
-            line: selection.end.line,
-            character: selection.end.character
-          },
-        }]
+        selectionPositions(editor)
       ) as [number, number, number, number] | undefined;
-
       if (result !== undefined) {
         editor.selection = new vscode.Selection(
           new vscode.Position(result[0], result[1]),
@@ -50,26 +53,11 @@ async function expandSelection() {
 async function moveCursorLeft() {
   const editor = vscode.window.activeTextEditor;
   if (editor) {
-    const selection = editor.selection;
     try {
       const result = await vscode.commands.executeCommand(
         'moveCursorLeft',
-        [{
-          textDocument: { uri: editor.document.uri.toString() },
-          position: {
-            line: selection.start.line,
-            character: selection.start.character
-          },
-        },
-        {
-          textDocument: { uri: editor.document.uri.toString() },
-          position: {
-            line: selection.end.line,
-            character: selection.end.character
-          },
-        }]
+        selectionPositions(editor)
       ) as [number, number] | undefined;
-
       if (result !== undefined) {
         editor.selection = new vscode.Selection(
           new vscode.Position(result[0], result[1]),

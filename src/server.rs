@@ -33,6 +33,63 @@ impl Backend {
   }
 }
 
+impl Backend {
+  fn selection_command(
+    &self,
+    params: ExecuteCommandParams,
+    name: &str,
+    f: impl Fn(StringTaggedDocument, usize, usize) -> Result<Option<Value>>,
+  ) -> Result<Option<Value>> {
+    if params.arguments.len() == 1 {
+      if let Some((selection_start_params, selection_end_params)) =
+        serde_json::from_value::<(
+          TextDocumentPositionParams,
+          TextDocumentPositionParams,
+        )>(params.arguments[0].clone())
+        .ok()
+      {
+        match self.documents.read() {
+          Ok(docs) => {
+            let uri = selection_start_params.text_document.uri.to_string();
+            let text = docs
+              .get(&uri)
+              .expect(&format!("didn't have data for document {}", uri));
+            let document: StringTaggedDocument =
+              Parser::new(sexp_graph(), text).try_into().unwrap();
+            let document_start_index = document
+              .row_and_col_to_index(
+                selection_start_params.position.line as usize,
+                selection_start_params.position.character as usize,
+              )
+              .expect("invalid row and col");
+            let document_end_index = document
+              .row_and_col_to_index(
+                selection_end_params.position.line as usize,
+                selection_end_params.position.character as usize,
+              )
+              .expect("invalid row and col");
+            f(document, document_start_index, document_end_index)
+          }
+          Err(e) => {
+            panic!("{name} failed to read document: {e:?}")
+          }
+        }
+      } else {
+        Err(Error::invalid_params(format!(
+          "Invalid parameters: {}",
+          params.arguments[0]
+        )))
+      }
+    } else {
+      Err(Error::invalid_params(format!(
+        "Invalid number of arguments {} to {}",
+        params.arguments.len(),
+        name
+      )))
+    }
+  }
+}
+
 fn sexp_graph<'g>() -> StringTaggedSyntaxGraph<'g> {
   StringTaggedSyntaxGraph::contextless_from_descriptions(
     vec![
@@ -85,128 +142,40 @@ impl LanguageServer for Backend {
     params: ExecuteCommandParams,
   ) -> Result<Option<Value>> {
     match params.command.as_str() {
-      "expandSelection" => {
-        if params.arguments.len() == 1 {
-          if let Some((selection_start_params, selection_end_params)) =
-            serde_json::from_value::<(
-              TextDocumentPositionParams,
-              TextDocumentPositionParams,
-            )>(params.arguments[0].clone())
-            .ok()
-          {
-            match self.documents.read() {
-              Ok(docs) => {
-                let uri = selection_start_params.text_document.uri.to_string();
-                let text = docs
-                  .get(&uri)
-                  .expect(&format!("didn't have data for document {}", uri));
-                let document: StringTaggedDocument =
-                  Parser::new(sexp_graph(), text).try_into().unwrap();
-                let document_start_index = document
-                  .row_and_col_to_index(
-                    selection_start_params.position.line as usize,
-                    selection_start_params.position.character as usize,
-                  )
-                  .expect("invalid row and col");
-                let document_end_index = document
-                  .row_and_col_to_index(
-                    selection_end_params.position.line as usize,
-                    selection_end_params.position.character as usize,
-                  )
-                  .expect("invalid row and col");
-                Ok(
-                  document
-                    .expand_selection(
-                      &(document_start_index..document_end_index),
-                    )
-                    .map(|new_selection| {
-                      let (start_row, start_col) = document
-                        .index_to_row_and_col(new_selection.start)
-                        .unwrap();
-                      let (end_row, end_col) = document
-                        .index_to_row_and_col(new_selection.end)
-                        .unwrap();
-                      serde_json::to_value([
-                        start_row, start_col, end_row, end_col,
-                      ])
-                      .unwrap()
-                    }),
+      "expandSelection" => self.selection_command(
+        params,
+        "expandSelection",
+        |document, start_index, end_index| {
+          Ok(document.expand_selection(&(start_index..end_index)).map(
+            |new_selection| {
+              let (start_row, start_col) =
+                document.index_to_row_and_col(new_selection.start).unwrap();
+              let (end_row, end_col) =
+                document.index_to_row_and_col(new_selection.end).unwrap();
+              serde_json::to_value([start_row, start_col, end_row, end_col])
+                .unwrap()
+            },
+          ))
+        },
+      ),
+      "moveCursorLeft" => self.selection_command(
+        params,
+        "moveCursorLeft",
+        |document, start_index, end_index| {
+          let (start_row, start_col) = document
+            .index_to_row_and_col(
+              document
+                .get_subtree(
+                  &document.innermost_enclosing_path(&(start_index..end_index)),
                 )
-              }
-              Err(e) => {
-                panic!("expandSelection failed to read document: {e:?}")
-              }
-            }
-          } else {
-            Err(Error::invalid_params(format!(
-              "Invalid parameters: {}",
-              params.arguments[0]
-            )))
-          }
-        } else {
-          Err(Error::invalid_params(format!(
-            "Invalid number of arguments {}",
-            params.arguments.len()
-          )))
-        }
-      }
-      "moveCursorLeft" => {
-        if params.arguments.len() == 1 {
-          if let Some((selection_start_params, selection_end_params)) =
-            serde_json::from_value::<(
-              TextDocumentPositionParams,
-              TextDocumentPositionParams,
-            )>(params.arguments[0].clone())
-            .ok()
-          {
-            match self.documents.read() {
-              Ok(docs) => {
-                let uri = selection_start_params.text_document.uri.to_string();
-                let text = docs
-                  .get(&uri)
-                  .expect(&format!("didn't have data for document {}", uri));
-                let document: StringTaggedDocument =
-                  Parser::new(sexp_graph(), text).try_into().unwrap();
-                let document_start_index = document
-                  .row_and_col_to_index(
-                    selection_start_params.position.line as usize,
-                    selection_start_params.position.character as usize,
-                  )
-                  .expect("invalid row and col");
-                let document_end_index = document
-                  .row_and_col_to_index(
-                    selection_end_params.position.line as usize,
-                    selection_end_params.position.character as usize,
-                  )
-                  .expect("invalid row and col");
-                let (start_row, start_col) = document
-                  .index_to_row_and_col(
-                    document
-                      .get_subtree(&document.innermost_enclosing_path(
-                        &(document_start_index..document_end_index),
-                      ))
-                      .unwrap()
-                      .range()
-                      .start,
-                  )
-                  .unwrap();
-                Ok(Some(serde_json::to_value([start_row, start_col]).unwrap()))
-              }
-              Err(e) => panic!("moveCursorLeft failed to read document: {e:?}"),
-            }
-          } else {
-            Err(Error::invalid_params(format!(
-              "Invalid parameters: {}",
-              params.arguments[0]
-            )))
-          }
-        } else {
-          Err(Error::invalid_params(format!(
-            "Invalid number of arguments {}",
-            params.arguments.len()
-          )))
-        }
-      }
+                .unwrap()
+                .range()
+                .start,
+            )
+            .unwrap();
+          Ok(Some(serde_json::to_value([start_row, start_col]).unwrap()))
+        },
+      ),
       _ => Err(Error::method_not_found()),
     }
   }
