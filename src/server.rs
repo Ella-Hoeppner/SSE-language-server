@@ -98,8 +98,12 @@ fn sexp_graph<'g>() -> StringTaggedSyntaxGraph<'g> {
       '\r'.to_string(),
     ],
     Some('\\'.to_string()),
-    vec![("", "(", ")")],
-    vec![],
+    vec![("", "(", ")"), ("bracket", "[", "]")],
+    vec![
+      ("quote", "'", 0, 1),
+      //("question", "?", 1, 0),
+      //("colon", ":", 1, 1)
+    ],
   )
 }
 
@@ -115,6 +119,7 @@ impl LanguageServer for Backend {
           commands: vec![
             "expandSelection".to_string(),
             "moveCursorToStart".to_string(),
+            "moveCursorToEnd".to_string(),
           ],
           work_done_progress_options: Default::default(),
         }),
@@ -163,6 +168,18 @@ impl LanguageServer for Backend {
           let (start_row, start_col) = document
             .index_to_row_and_col(
               document.move_cursor_to_start(&(start_index..end_index)),
+            )
+            .unwrap();
+          Ok(Some(serde_json::to_value([start_row, start_col]).unwrap()))
+        },
+      ),
+      "moveCursorToEnd" => self.selection_command(
+        params,
+        "moveCursorToEnd",
+        |document, start_index, end_index| {
+          let (start_row, start_col) = document
+            .index_to_row_and_col(
+              document.move_cursor_to_end(&(start_index..end_index)),
             )
             .unwrap();
           Ok(Some(serde_json::to_value([start_row, start_col]).unwrap()))

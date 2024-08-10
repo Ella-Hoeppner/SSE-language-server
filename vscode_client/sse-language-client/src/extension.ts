@@ -72,6 +72,28 @@ async function moveCursorToStart() {
   }
 }
 
+async function moveCursorToEnd() {
+  const editor = vscode.window.activeTextEditor;
+  if (editor) {
+    try {
+      const result = await vscode.commands.executeCommand(
+        'moveCursorToEnd',
+        selectionPositions(editor)
+      ) as [number, number] | undefined;
+      if (result !== undefined) {
+        editor.selection = new vscode.Selection(
+          new vscode.Position(result[0], result[1]),
+          new vscode.Position(result[0], result[1]),
+        );
+      } else {
+        console.error('result was undefined');
+      }
+    } catch (error) {
+      console.error('Error calling custom LSP command:', error);
+    }
+  }
+}
+
 export function activate(context: vscode.ExtensionContext) {
   const serverPath = path.join(__dirname, '..', '..', '..', 'target', 'debug', 'sse_lsp');
 
@@ -88,7 +110,9 @@ export function activate(context: vscode.ExtensionContext) {
   };
 
   for (let [commandName, commandHandler] of
-    [['extension.moveCursorToStart', moveCursorToStart],['extension.expandSelection', expandSelection],
+    [['extension.moveCursorToStart', moveCursorToStart],
+     ['extension.moveCursorToEnd', moveCursorToEnd],
+     ['extension.expandSelection', expandSelection],
     ] as const) {
     context.subscriptions.push(
       vscode.commands.registerCommand(commandName, commandHandler)
